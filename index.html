@@ -1,411 +1,300 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { 
-  Activity, Baby, UserRound, HeartPulse, Stethoscope, 
-  ClipboardCheck, Info, Calculator, BookOpen, PieChart, 
-  Users, CheckCircle2, ShieldCheck, GraduationCap,
-  Mail, User, FileText, Target, TrendingUp, ChevronRight
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAPS PRO - Matheus Rodrigues da Cruz</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F1F5F9; }
+        .glass-card { background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); }
+        .animate-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-/**
- * SAPS PRO: GUIA ESTRATÉGICO PARA O ENFERMEIRO DA APS
- * Criador: Matheus Rodrigues da Cruz (matheusrcruz03@iclooud.com)
- * Versão: 5.0 (Guia Técnico Determinístico - Sem Dependência de IA)
- * Base Científica: Notas Metodológicas C1-C7 e SAE (Resolução COFEN 358/2009)
- */
+    <script type="text/babel">
+        const { useState, useMemo, useRef, useEffect } = React;
 
-// Modelos de Intervenção Técnica baseados nas Notas Metodológicas
-const INTERVENTION_TEMPLATES = {
-  c1: {
-    diagnostico: "Desequilíbrio entre oferta de cuidado continuado e demanda espontânea.",
-    intervencoes: [
-      "Reorganização da agenda da eSF: Garantir blocos de tempo específicos para demanda programada (hipertensos, diabéticos, pré-natal).",
-      "Monitorização semanal do relatório de atendimentos no PEC para ajuste do fluxo.",
-      "Capacitação dos ACS para triagem administrativa e orientação sobre o acolhimento com classificação de risco."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Secretaria de Atenção Primária à Saúde. Nota Metodológica C1 - Mais Acesso. Brasília, 2024."
-  },
-  c2: {
-    diagnostico: "Défice no acompanhamento do crescimento e desenvolvimento infantil ou cobertura vacinal.",
-    intervencoes: [
-      "Busca ativa de crianças que não realizaram a 1ª consulta até aos 30 dias de vida.",
-      "Vigilância do calendário vacinal via SIPNI e busca imediata de faltosos.",
-      "Realização de consultas de puericultura com registo obrigatório de peso e estatura em todas as oportunidades de contacto."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C2 - Cuidado no Desenvolvimento Infantil. Brasília, 2024."
-  },
-  c3: {
-    diagnostico: "Captação tardia ou descontinuidade no cuidado pré-natal e puerperal.",
-    intervencoes: [
-      "Estratégia de captação precoce: Teste rápido de gravidez com início imediato do PN na 1ª consulta (até 12ª semana).",
-      "Gestão de exames: Monitorização rigorosa dos resultados de 1º e 3º trimestre no PEC.",
-      "Integração com a Saúde Bucal: Agendamento compulsório da avaliação odontológica da gestante.",
-      "Visita domiciliária do ACS e Enfermeiro até ao 7º dia pós-parto (Consulta Puerperal)."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C3 - Cuidado na Gestação e Puerpério. Brasília, 2024."
-  },
-  c4: {
-    diagnostico: "Controlo metabólico inadequado e risco de complicações em pessoas com Diabetes.",
-    intervencoes: [
-      "Vigilância da Hemoglobina Glicada (HbA1c): Solicitação semestral para casos descompensados e anual para estáveis.",
-      "Exame físico de enfermagem: Avaliação sistemática dos pés para prevenção de úlceras e amputações.",
-      "Busca ativa por ACS para pessoas sem consulta registada nos últimos 6 meses."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C4 - Cuidado da Pessoa com Diabetes. Brasília, 2024."
-  },
-  c5: {
-    diagnostico: "Risco cardiovascular elevado por controlo pressórico irregular.",
-    intervencoes: [
-      "Padronização da técnica de aferição da PA por toda a equipa técnica.",
-      "Monitorização longitudinal: Registro de PA em todas as consultas (médicas e de enfermagem).",
-      "Incentivo à adesão terapêutica através de grupos de Hiperdia e educação em saúde."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C5 - Cuidado da Pessoa com Hipertensão. Brasília, 2024."
-  },
-  c6: {
-    diagnostico: "Vulnerabilidade no cuidado à pessoa idosa e perda de autonomia.",
-    intervencoes: [
-      "Realização da Avaliação Multidimensional da Pessoa Idosa (Caderneta do Idoso).",
-      "Campanha interna de vacinação contra Influenza (Garantir 100% de cobertura no território).",
-      "Vigilância de quedas e polifarmácia durante as consultas de rotina e visitas do ACS."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C6 - Cuidado da Pessoa Idosa. Brasília, 2024."
-  },
-  c7: {
-    diagnostico: "Baixa cobertura de rastreio para cancro do colo do útero e mama.",
-    intervencoes: [
-      "Busca ativa baseada na idade: Mulheres de 25-64 anos sem citopatológico nos últimos 3 anos.",
-      "Busca ativa para rastreio mamográfico: Mulheres de 50-69 anos sem exame nos últimos 2 anos.",
-      "Fortalecimento da vacinação HPV em adolescentes (9-14 anos) no território escolar."
-    ],
-    referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C7 - Cuidado da Mulher na Prevenção do Câncer. Brasília, 2024."
-  }
-};
+        // --- COMPONENTES DE ÍCONES INTERNOS (Garante independência total) ---
+        const Icon = ({ path, size = 16, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+        );
+        const ActivityIcon = (props) => <Icon {...props} path={<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />} />;
+        const PieChartIcon = (props) => <Icon {...props} path={<><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></>} />;
+        const BookIcon = (props) => <Icon {...props} path={<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>} />;
+        const ShieldIcon = (props) => <Icon {...props} path={<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />} />;
+        const CalcIcon = (props) => <Icon {...props} path={<><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><line x1="8" y1="6" x2="16" y2="6" /><line x1="16" y1="14" x2="16" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></>} />;
+        const TargetIcon = (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>} />;
+        const CheckIcon = (props) => <Icon {...props} path={<polyline points="20 6 9 17 4 12" />} />;
+        const FileIcon = (props) => <Icon {...props} path={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></>} />;
+        const GraduationIcon = (props) => <Icon {...props} path={<><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></>} />;
+        const TrendingIcon = (props) => <Icon {...props} path={<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>} />;
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [showGuide, setShowGuide] = useState(false);
-  const insightRef = useRef(null);
-  
-  // Estado centralizado para indicadores C1-C7
-  const [data, setData] = useState({
-    c1: { prog: 0, total: 0 },
-    c2: { den: 0, a: 0, b: 0, c: 0, d: 0, e: 0 },
-    c3: { den: 0, a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, g: 0, h: 0, i: 0, j: 0, k: 0 },
-    c4: { den: 0, a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 },
-    c5: { den: 0, a: 0, b: 0, c: 0, d: 0 },
-    c6: { den: 0, a: 0, b: 0, c: 0, d: 0 },
-    c7: { den: 0, a: 0, b: 0, c: 0, d: 0 }
-  });
+        // --- MODELOS TÉCNICOS ---
+        const INTERVENTION_TEMPLATES = {
+            c1: {
+                diagnostico: "Desequilíbrio entre oferta de cuidado continuado e demanda espontânea.",
+                intervencoes: ["Organização da agenda: Reservar 50% a 70% das vagas para grupos prioritários.", "Triagem Administrativa: Capacitar recepção para diferenciar urgências de consultas de rotina.", "Monitorização Mensal: Avaliar o rácio de atendimentos programados no PEC."],
+                referencia: "BRASIL. Ministério da Saúde. Secretaria de Atenção Primária à Saúde. Nota Metodológica C1 - Mais Acesso. Brasília, 2024."
+            },
+            c2: {
+                diagnostico: "Déficit no acompanhamento do crescimento e desenvolvimento infantil.",
+                intervencoes: ["Busca ativa: Bebês sem 1ª consulta até os 30 dias de vida.", "Vigilância Vacinal: Revisão mensal do espelho vacinal para as vacinas VIP, Pentavalente e Pneumocócica.", "Puericultura: Garantir 9 registros de antropometria até os 2 anos."],
+                referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C2. Brasília, 2024."
+            },
+            c3: {
+                diagnostico: "Necessidade de captação precoce e vigilância pré-natal rigorosa.",
+                intervencoes: ["Captação Precoce: Início do PN até a 12ª semana de gestação.", "Vigilância Laboratorial: Registro dos exames (HIV/Sífilis) no 1º e 3º trimestre.", "Puerpério: Realizar consulta puerperal até 42 dias pós-parto (foco no 7º dia)."],
+                referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C3. Brasília, 2024."
+            },
+            c4: {
+                diagnostico: "Risco de complicações metabólicas e vasculares em pessoas com Diabetes.",
+                intervencoes: ["Consulta Semestral: Garantir atendimento clínico a cada 6 meses.", "Vigilância Anual: Realizar exame dos pés e Hemoglobina Glicada a cada 12 meses.", "Busca Ativa: Identificar pessoas sem visita do ACS há mais de 30 dias."],
+                referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C4. Brasília, 2024."
+            },
+            c5: {
+                diagnostico: "Controle pressórico instável e risco cardiovascular elevado.",
+                intervencoes: ["Aferição de PA: Registro obrigatório a cada 6 meses.", "Antropometria: Peso e altura registrados pelo menos 1 vez por ano.", "Adesão: Organizar grupos de Hiperdia para monitorização coletiva."],
+                referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C5. Brasília, 2024."
+            },
+            c6: {
+                diagnostico: "Vulnerabilidade funcional e risco de perda de autonomia na pessoa idosa.",
+                intervencoes: ["Consulta Anual: Avaliação multidimensional completa nos últimos 12 meses.", "Imunização: Registro da vacina Influenza no último ciclo de 12 meses.", "Monitorização Domiciliar: 2 visitas do ACS com intervalo de 30 dias."],
+                referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C6. Brasília, 2024."
+            },
+            c7: {
+                diagnostico: "Baixa cobertura de rastreio oncológico feminino organizado (Câncer).",
+                intervencoes: ["Câncer de Colo do Útero: Citopatológico nos últimos 36 meses (25-64 anos).", "Câncer de Mama: Mamografia nos últimos 24 meses (50-69 anos).", "HPV: Vacinação em adolescentes (9-14 anos) via busca ativa nominal."],
+                referencia: "BRASIL. Ministério da Saúde. Nota Metodológica C7. Brasília, 2024."
+            }
+        };
 
-  const updateVal = (indicator, field, val) => {
-    const num = Math.max(0, parseInt(val) || 0);
-    setData(prev => ({
-      ...prev,
-      [indicator]: { ...prev[indicator], [field]: num }
-    }));
-  };
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [showGuide, setShowGuide] = useState(false);
+            const insightRef = useRef(null);
+            const [data, setData] = useState(() => {
+                const saved = localStorage.getItem('saps_data_v6_final');
+                return saved ? JSON.parse(saved) : {
+                    c1: { prog: 0, total: 0 }, c2: { den: 0, a: 0, b: 0, c: 0, d: 0, e: 0 },
+                    c3: { den: 0, a: 0, b: 0, c: 0, d: 0, e: 0, f: 0, g: 0, h: 0, i: 0, j: 0, k: 0 },
+                    c4: { den: 0, a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 }, c5: { den: 0, a: 0, b: 0, c: 0, d: 0 },
+                    c6: { den: 0, a: 0, b: 0, c: 0, d: 0 }, c7: { den: 0, a: 0, b: 0, c: 0, d: 0 }
+                };
+            });
 
-  const results = useMemo(() => {
-    const res = {};
-    
-    // C1: Mais Acesso
-    const c1Score = data.c1.total > 0 ? (data.c1.prog / data.c1.total) * 100 : 0;
-    res.c1 = {
-      score: c1Score,
-      label: c1Score >= 50 && c1Score <= 70 ? 'Ótimo' : 'Regular/Bom',
-      color: c1Score >= 50 && c1Score <= 70 ? 'bg-green-600' : 'bg-orange-500',
-      gaps: c1Score < 50 ? [{ bp: 'Acesso Programado', missing: Math.ceil((0.5 * data.c1.total) - data.c1.prog) }] : []
-    };
+            useEffect(() => { localStorage.setItem('saps_data_v6_final', JSON.stringify(data)); }, [data]);
 
-    const calcPoints = (indicator, config, den) => {
-      if (den <= 0) return { score: 0, label: 'N/A', color: 'bg-slate-300', gaps: [] };
-      let totalPoints = 0;
-      const gaps = [];
-      Object.keys(config).forEach(key => {
-        const achieved = data[indicator][key];
-        totalPoints += (achieved / den) * config[key];
-        if (achieved < den) gaps.push({ bp: key.toUpperCase(), missing: den - achieved });
-      });
-      const score = Math.min(100, totalPoints);
-      return {
-        score,
-        label: score >= 75 ? 'Ótimo' : score >= 50 ? 'Bom' : 'Regular',
-        color: score >= 75 ? 'bg-green-600' : score >= 50 ? 'bg-blue-600' : 'bg-red-500',
-        gaps
-      };
-    };
+            const updateVal = (indicator, field, val) => {
+                const num = Math.max(0, parseInt(val) || 0);
+                setData(prev => ({ ...prev, [indicator]: { ...prev[indicator], [field]: num } }));
+            };
 
-    res.c2 = calcPoints('c2', { a: 20, b: 20, c: 20, d: 20, e: 20 }, data.c2.den);
-    res.c3 = calcPoints('c3', { a: 10, b: 9, c: 9, d: 9, e: 9, f: 9, g: 9, h: 9, i: 9, j: 9, k: 9 }, data.c3.den);
-    res.c4 = calcPoints('c4', { a: 20, b: 15, c: 15, d: 20, e: 15, f: 15 }, data.c4.den);
-    res.c5 = calcPoints('c5', { a: 25, b: 25, c: 25, d: 25 }, data.c5.den);
-    res.c6 = calcPoints('c6', { a: 25, b: 25, c: 25, d: 25 }, data.c6.den);
-    res.c7 = calcPoints('c7', { a: 20, b: 30, c: 30, d: 20 }, data.c7.den);
+            const results = useMemo(() => {
+                const res = {};
+                const c1Score = data.c1.total > 0 ? (data.c1.prog / data.c1.total) * 100 : 0;
+                res.c1 = {
+                    score: c1Score, label: c1Score >= 50 && c1Score <= 70 ? 'Ótimo' : 'Regular/Bom', color: c1Score >= 50 && c1Score <= 70 ? 'bg-green-600' : 'bg-orange-500',
+                    gaps: c1Score < 50 ? [{ bp: 'Demandas Programadas', missing: Math.ceil((0.5 * data.c1.total) - data.c1.prog) }] : []
+                };
 
-    return res;
-  }, [data]);
+                const calcPoints = (id, config, den) => {
+                    if (den <= 0) return { score: 0, label: 'N/A', color: 'bg-slate-300', gaps: [] };
+                    let totalPoints = 0; const gaps = [];
+                    Object.keys(config).forEach(key => {
+                        const achieved = data[id][key];
+                        totalPoints += (achieved / den) * config[key];
+                        if (achieved < den) gaps.push({ bp: key.toUpperCase(), missing: den - achieved });
+                    });
+                    const score = Math.min(100, totalPoints);
+                    return { score, label: score >= 75 ? 'Ótimo' : score >= 50 ? 'Bom' : 'Regular', color: score >= 75 ? 'bg-green-600' : score >= 50 ? 'bg-blue-600' : 'bg-red-500', gaps };
+                };
 
-  const toggleGuide = () => {
-    setShowGuide(!showGuide);
-    if (!showGuide) {
-      setTimeout(() => insightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    }
-  };
+                res.c2 = calcPoints('c2', { a: 20, b: 20, c: 20, d: 20, e: 20 }, data.c2.den);
+                res.c3 = calcPoints('c3', { a: 10, b: 9, c: 9, d: 9, e: 9, f: 9, g: 9, h: 9, i: 9, j: 9, k: 9 }, data.c3.den);
+                res.c4 = calcPoints('c4', { a: 20, b: 15, c: 15, d: 20, e: 15, f: 15 }, data.c4.den);
+                res.c5 = calcPoints('c5', { a: 25, b: 25, c: 25, d: 25 }, data.c5.den);
+                res.c6 = calcPoints('c6', { a: 25, b: 25, c: 25, d: 25 }, data.c6.den);
+                res.c7 = calcPoints('c7', { a: 20, b: 30, c: 30, d: 20 }, data.c7.den);
+                return res;
+            }, [data]);
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] flex font-sans text-slate-900">
-      {/* Sidebar de Navegação */}
-      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen shadow-2xl z-20">
-        <div className="p-8 pb-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-indigo-600 p-2 rounded-2xl shadow-lg">
-              <ShieldCheck className="text-white" size={24} />
-            </div>
-            <h1 className="font-black text-2xl tracking-tighter text-slate-800">SAPS <span className="text-indigo-600">PRO</span></h1>
-          </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 leading-none">Decision Support Guide</p>
-        </div>
+            const generatePDF = (id) => {
+                const { jsPDF } = window.jspdf; const doc = new jsPDF(); const template = INTERVENTION_TEMPLATES[id]; const res = results[id]; const date = new Date().toLocaleDateString('pt-BR');
+                doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.setTextColor(79, 70, 229); doc.text("SAPS PRO - Relatório de Gestão", 20, 25);
+                doc.setFontSize(10); doc.setTextColor(100); doc.text(`Responsável: Matheus Rodrigues da Cruz • Data: ${date}`, 20, 32); doc.line(20, 35, 190, 35);
+                doc.setFontSize(14); doc.setTextColor(0); doc.text(`Indicador: ${getLabel(id)}`, 20, 50); doc.text(`Performance: ${res.score.toFixed(1)}% (${res.label})`, 20, 58);
+                doc.setFontSize(11); doc.text("1. Diagnóstico de Enfermagem:", 20, 75); doc.setFont("helvetica", "italic"); const diag = doc.splitTextToSize(template.diagnostico, 160); doc.text(diag, 25, 82);
+                doc.setFont("helvetica", "bold"); doc.text("2. Ações Prioritárias (SAE):", 20, 105); doc.setFont("helvetica", "normal"); let y = 113;
+                template.intervencoes.forEach(i => { const lines = doc.splitTextToSize(`- ${i}`, 160); doc.text(lines, 25, y); y += (lines.length * 6); });
+                doc.save(`SAPS_PRO_Relatorio_${id}.pdf`);
+            };
 
-        <nav className="flex-1 overflow-y-auto px-4 space-y-1 mt-6">
-          <button onClick={() => { setActiveTab('dashboard'); setShowGuide(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>
-            <PieChart size={18} /> Painel de Vigilância
-          </button>
-          <div className="py-3 px-4"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Indicadores de Metas</p></div>
-          {['c1','c2','c3','c4','c5','c6','c7'].map(id => (
-            <button key={id} onClick={() => { setActiveTab(id); setShowGuide(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold rounded-xl transition-all ${activeTab === id ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <Activity size={16} /> {getLabel(id)}
-            </button>
-          ))}
-          <div className="pt-6 px-4 border-t mt-6">
-            <button onClick={() => setActiveTab('refs')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'refs' ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <BookOpen size={18} /> Referências Técnicas
-            </button>
-          </div>
-        </nav>
+            const getLabel = (id) => {
+                const labels = { c1: "Mais Acesso", c2: "Desenv. Infantil", c3: "Pré-natal/Puerp.", c4: "Pessoa c/ Diabetes", c5: "Pessoa c/ Hipertensão", c6: "Pessoa Idosa", c7: "Prev. Câncer Mulher" };
+                return labels[id] || id.toUpperCase();
+            };
 
-        <div className="p-6 bg-slate-50 border-t border-slate-100 mt-auto">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-            <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-tighter">Autor / Enfermagem</p>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">MR</div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-black text-slate-800 truncate">Matheus Rodrigues</p>
-                <p className="text-[9px] text-slate-500 truncate">matheusrcruz03@iclooud.com</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Área Principal */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto pb-12">
-          
-          {/* DASHBOARD */}
-          {activeTab === 'dashboard' && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-              <header className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-4xl font-black text-slate-800 tracking-tighter">Status de Saúde da Equipe</h2>
-                  <p className="text-slate-500 font-medium tracking-tight mt-1">Consolidação matemática do quadrimestre em tempo real.</p>
-                </div>
-              </header>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {Object.entries(results).map(([id, res]) => (
-                  <div key={id} onClick={() => setActiveTab(id)} className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 hover:border-indigo-300 hover:shadow-xl transition-all cursor-pointer group">
-                    <div className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg text-white w-fit ${res.color} mb-4`}>{res.label}</div>
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight group-hover:text-indigo-600 transition-colors">{getLabel(id)}</h3>
-                    <p className="text-3xl font-black text-slate-800 mt-1">{res.score.toFixed(1)}%</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* INDICADORES INDIVIDUAIS */}
-          {['c1','c2','c3','c4','c5','c6','c7'].includes(activeTab) && (
-            <div className="space-y-8 animate-in slide-in-from-right duration-300">
-              <header className="flex flex-col md:flex-row justify-between items-end border-b border-slate-200 pb-8 gap-6">
-                <div>
-                  <h2 className="text-5xl font-black text-slate-800 tracking-tighter leading-tight">{getLabel(activeTab)}</h2>
-                  <p className="text-slate-500 mt-2 font-medium flex items-center gap-2 italic">
-                    <ShieldCheck size={18} className="text-indigo-600" /> Metodologia SAPS/MS 2024-2025
-                  </p>
-                </div>
-                <div className="bg-white px-8 py-4 rounded-[32px] shadow-sm border border-slate-100 flex items-center gap-8">
-                  <div className="text-center">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Desempenho</span>
-                    <div className="text-3xl font-black text-slate-800 mt-1">{results[activeTab].score.toFixed(1)}%</div>
-                  </div>
-                  <div className="h-12 w-px bg-slate-100"></div>
-                  <span className={`text-[10px] font-black uppercase px-4 py-2 rounded-full text-white shadow-md ${results[activeTab].color}`}>{results[activeTab].label}</span>
-                </div>
-              </header>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Entradas de Dados */}
-                <div className="bg-white p-10 rounded-[40px] shadow-sm border border-slate-200">
-                  <div className="mb-10 p-8 bg-indigo-50 rounded-[32px] border border-indigo-100">
-                    <label className="text-[10px] font-black text-indigo-700 uppercase mb-3 block tracking-widest">Denominador Total (População)</label>
-                    <input 
-                      type="number" 
-                      value={data[activeTab].den || ''} 
-                      onChange={e => updateVal(activeTab, 'den', e.target.value)} 
-                      className="text-4xl font-black bg-transparent border-b-2 border-indigo-200 focus:border-indigo-600 outline-none w-full pb-2 transition-all" 
-                      placeholder="0" 
-                    />
-                    <p className="text-[10px] text-indigo-500 mt-3 italic font-medium">Nº total de pessoas elegíveis vinculadas à eSF.</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderSpecificInputs(activeTab, data, updateVal)}
-                  </div>
-                </div>
-
-                {/* Plano de Metas Local (Sem IA) */}
-                <div className="space-y-6">
-                  <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-200">
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600"><Target size={22} /></div>
-                      <h4 className="font-black text-slate-800 uppercase text-xs tracking-widest">Simulação de Gaps</h4>
-                    </div>
-                    <div className="space-y-3">
-                      {results[activeTab].gaps.length > 0 ? (
-                        results[activeTab].gaps.slice(0, 5).map((g, i) => (
-                          <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white transition-all">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">FALTA EM BP({g.bp}):</span>
-                            <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{g.missing} pessoas</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-6 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-4 text-green-700">
-                          <CheckCircle2 size={24} />
-                          <span className="text-xs font-black uppercase tracking-tight">Padrão Ouro: 100% de cobertura atingida!</span>
+            return (
+                <div className="flex">
+                    <aside className="w-72 bg-white border-r border-slate-200 flex flex-col fixed h-screen shadow-xl z-30">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-indigo-600 p-2.5 rounded-2xl shadow-lg"><ShieldIcon size={24} className="text-white" /></div>
+                                <h1 className="font-extrabold text-2xl tracking-tighter text-slate-800 uppercase">SAPS <span className="text-indigo-600">PRO</span></h1>
+                            </div>
                         </div>
-                      )}
-                    </div>
-                    <button 
-                      onClick={toggleGuide} 
-                      className="w-full mt-8 bg-indigo-600 text-white p-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-4"
-                    >
-                      <FileText size={20} /> 
-                      {showGuide ? "FECHAR GUIA TÉCNICO" : "VER GUIA DE INTERVENÇÃO (SAE) ✨"}
-                    </button>
-                  </div>
-
-                  {/* GUIA TÉCNICO ESTÁTICO (Substitui a IA) */}
-                  {showGuide && (
-                    <div ref={insightRef} className="bg-white border-2 border-indigo-100 rounded-[40px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-500">
-                      <div className="bg-indigo-600 px-8 py-5 flex items-center justify-between text-white">
-                        <div className="flex items-center gap-4 font-black text-xs uppercase tracking-widest">
-                          <GraduationCap size={20} /> Protocolo de Enfermagem: {getLabel(activeTab).toUpperCase()}
-                        </div>
-                      </div>
-                      <div className="p-10 space-y-6">
-                        <div>
-                          <h5 className="text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2">
-                             <TrendingUp size={14} /> 1. Diagnóstico de Situação (Local)
-                          </h5>
-                          <p className="text-sm text-slate-700 font-medium leading-relaxed italic">
-                            {INTERVENTION_TEMPLATES[activeTab].diagnostico} Verifica-se um défice acumulado de 
-                            <span className="text-indigo-600 font-bold"> {results[activeTab].gaps.reduce((acc, curr) => acc + curr.missing, 0)} </span> 
-                            ações de monitorização para atingir a cobertura plena.
-                          </p>
-                        </div>
-                        
-                        <div className="h-px bg-slate-100 w-full" />
-
-                        <div>
-                          <h5 className="text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-3 flex items-center gap-2">
-                             <CheckCircle2 size={14} /> 2. Intervenções de Enfermagem (SAE)
-                          </h5>
-                          <ul className="space-y-3">
-                            {INTERVENTION_TEMPLATES[activeTab].intervencoes.map((item, i) => (
-                              <li key={i} className="flex gap-3 text-sm text-slate-600 font-medium leading-relaxed">
-                                <span className="text-indigo-600 font-black mt-0.5">•</span>
-                                {item}
-                              </li>
+                        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scroll">
+                            <button onClick={() => { setActiveTab('dashboard'); setShowGuide(false); }} className={`w-full text-left px-4 py-3 text-sm font-bold rounded-xl transition-all flex items-center gap-3 ${activeTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><PieChartIcon size={18} /> Painel Geral</button>
+                            <div className="py-2 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Indicadores</div>
+                            {Object.keys(data).map(id => (
+                                <button key={id} onClick={() => { setActiveTab(id); setShowGuide(false); }} className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-3 ${activeTab === id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}><ActivityIcon size={16} /> {getLabel(id)}</button>
                             ))}
-                          </ul>
+                        </nav>
+                        <div className="p-6 border-t mt-auto">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                <p className="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-tighter">Autor / Enfermagem</p>
+                                <p className="text-xs font-bold text-slate-700 leading-tight">Matheus Rodrigues da Cruz</p>
+                                <p className="text-[10px] text-slate-500 mt-1">matheusrcruz03@iclooud.com</p>
+                            </div>
                         </div>
+                    </aside>
 
-                        <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-100">
-                          <h5 className="text-slate-400 font-black text-[9px] uppercase tracking-widest mb-2 flex items-center gap-2">
-                             <BookOpen size={12} /> Referência Científica (ABNT)
-                          </h5>
-                          <p className="text-[11px] text-slate-500 italic font-medium leading-normal">
-                            {INTERVENTION_TEMPLATES[activeTab].referencia}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="px-10 py-4 bg-slate-50 border-t border-slate-100 text-[9px] font-bold text-slate-400 uppercase flex justify-between tracking-widest">
-                        <span>Matheus Rodrigues da Cruz</span>
-                        <span>Monitorização SAPS PRO 2024</span>
-                      </div>
+                    <main className="flex-1 ml-72 p-10 min-h-screen">
+                        {activeTab === 'dashboard' && (
+                            <div className="max-w-6xl mx-auto space-y-10 animate-in">
+                                <header>
+                                    <h2 className="text-4xl font-extrabold text-slate-800 tracking-tight">Vigilância Quadrimestral</h2>
+                                    <p className="text-slate-500 font-medium">Monitorização baseada nas Notas Metodológicas do Ministério da Saúde.</p>
+                                </header>
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                                    {Object.entries(results).map(([id, res]) => (
+                                        <div key={id} onClick={() => setActiveTab(id)} className="glass-card p-6 rounded-[32px] hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group">
+                                            <div className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg text-white w-fit ${res.color} mb-5 shadow-sm`}>{res.label}</div>
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{getLabel(id)}</h3>
+                                            <p className="text-4xl font-black text-slate-800 mt-2 tracking-tighter">{res.score.toFixed(1)}%</p>
+                                            <div className="w-full bg-slate-100 h-1.5 mt-6 rounded-full overflow-hidden"><div className={`h-full ${res.color}`} style={{width: `${res.score}%`}}></div></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'refs' && (
+                            <div className="max-w-3xl mx-auto glass-card p-12 rounded-[40px] animate-in">
+                                <h3 className="text-3xl font-black text-slate-800 mb-8 tracking-tighter border-b pb-6 uppercase flex items-center gap-4"><BookIcon size={32} className="text-indigo-600" /> Fundamentação Científica</h3>
+                                <div className="space-y-6 text-sm text-slate-600 leading-relaxed italic">
+                                    <p className="pl-4 border-l-4 border-indigo-600 py-1">BRASIL. Ministério da Saúde. Secretaria de Atenção Primária à Saúde. <strong>Nota Metodológica C1 a C7: Indicadores Quadrimestrais</strong>. Brasília: Ministério da Saúde, 2024.</p>
+                                    <p className="pl-4 border-l-4 border-indigo-600 py-1">CONSELHO FEDERAL DE ENFERMAGEM. <strong>Resolução nº 358/2009</strong>: SAE e Processo de Enfermagem. Brasília, 2009.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {['c1','c2','c3','c4','c5','c6','c7'].includes(activeTab) && (
+                            <div className="max-w-6xl mx-auto space-y-8 animate-in">
+                                <header className="flex flex-col lg:flex-row justify-between lg:items-end gap-6 border-b border-slate-200 pb-8">
+                                    <div>
+                                        <h2 className="text-4xl font-black text-slate-800 tracking-tighter uppercase">{getLabel(activeTab)}</h2>
+                                        <p className="text-slate-500 mt-2 font-medium flex items-center gap-2"><ShieldIcon size={18} className="text-indigo-600" /> Monitorização SAE • Matheus Rodrigues da Cruz</p>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-[28px] shadow-sm border flex items-center gap-8">
+                                        <div className="text-center">
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Score da Equipe</span>
+                                            <div className="text-3xl font-black text-slate-800 mt-1 tracking-tighter">{results[activeTab].score.toFixed(1)}%</div>
+                                        </div>
+                                        <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase text-white shadow-md ${results[activeTab].color}`}>{results[activeTab].label}</div>
+                                    </div>
+                                </header>
+
+                                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+                                    <section className="xl:col-span-7 glass-card p-8 rounded-[40px]">
+                                        <div className="bg-indigo-600/5 p-6 rounded-3xl border border-indigo-100 mb-8 text-center">
+                                            <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block mb-2 flex items-center justify-center gap-2"><CalcIcon size={14} /> Denominador Total (População-Alvo)</label>
+                                            <input type="number" value={data[activeTab].den || ''} onChange={e => updateVal(activeTab, 'den', e.target.value)} className="text-5xl font-black bg-transparent border-none outline-none text-slate-800 text-center w-full focus:text-indigo-600 transition-colors" placeholder="0" />
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {renderSpecificInputs(activeTab, data, updateVal)}
+                                        </div>
+                                    </section>
+
+                                    <section className="xl:col-span-5 space-y-6">
+                                        <div className="glass-card p-8 rounded-[40px] border-l-8 border-l-indigo-600 shadow-lg">
+                                            <h4 className="font-black text-slate-800 uppercase text-[10px] tracking-widest mb-6 flex items-center gap-2"><TargetIcon size={18} className="text-indigo-600" /> Vigilância de Gaps (Faltantes)</h4>
+                                            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scroll">
+                                                {results[activeTab].gaps.length > 0 ? (
+                                                    results[activeTab].gaps.map((g, i) => (
+                                                        <div key={i} className="flex justify-between items-center p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group">
+                                                            <span className="text-[10px] font-bold text-slate-500 uppercase leading-tight">BP({g.bp}):</span>
+                                                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full whitespace-nowrap">{g.missing} pessoas</span>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="p-6 bg-green-50 rounded-2xl flex items-center gap-4 text-green-700 font-bold uppercase text-[10px]"><CheckIcon size={24} /> Excelência: 100% de cobertura atingida!</div>
+                                                )}
+                                            </div>
+                                            <button onClick={() => setShowGuide(!showGuide)} className="w-full mt-8 bg-indigo-600 text-white p-4 rounded-[20px] font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 active:scale-95">
+                                                <FileIcon size={16} /> {showGuide ? "FECHAR PROTOCOLO" : "VER GUIA DE INTERVENÇÃO ✨"}
+                                            </button>
+                                        </div>
+
+                                        {showGuide && (
+                                            <div className="glass-card border-2 border-indigo-100 rounded-[32px] overflow-hidden shadow-2xl animate-in">
+                                                <div className="bg-indigo-600 px-6 py-4 text-white font-black text-[10px] uppercase flex justify-between items-center">
+                                                    <span className="flex items-center gap-2"><GraduationIcon size={16} /> GUIA SAE: {getLabel(activeTab)}</span>
+                                                    <button onClick={() => generatePDF(activeTab)} className="bg-white/20 hover:bg-white/40 px-3 py-1.5 rounded-lg transition-all text-[8px] font-bold tracking-widest uppercase">Exportar PDF</button>
+                                                </div>
+                                                <div className="p-8 space-y-6">
+                                                    <div><h5 className="text-indigo-600 font-black text-[9px] uppercase mb-2 tracking-widest flex items-center gap-2"><TrendingIcon size={12} /> 1. Diagnóstico Clínico</h5><p className="text-sm text-slate-700 italic leading-relaxed font-medium">{INTERVENTION_TEMPLATES[activeTab].diagnostico} Déficit acumulado identificado.</p></div>
+                                                    <div className="h-px bg-slate-100 w-full" />
+                                                    <div><h5 className="text-indigo-600 font-black text-[9px] uppercase mb-3 tracking-widest flex items-center gap-2"><CheckIcon size={12} /> 2. Ações Prioritárias</h5><ul className="space-y-3">{INTERVENTION_TEMPLATES[activeTab].intervencoes.map((item, i) => (<li key={i} className="flex gap-3 text-xs text-slate-600 font-medium leading-relaxed"><span className="text-indigo-600 font-black">•</span> {item}</li>))}</ul></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </section>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        function renderSpecificInputs(id, data, updateVal) {
+            const Input = ({ field, label, weight, period }) => (
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col gap-1 hover:bg-white transition-all group focus-within:ring-2 focus-within:ring-indigo-500/20">
+                    <div className="flex justify-between items-start mb-0.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter leading-none group-hover:text-indigo-500 transition-colors">{label}</label>
+                        <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{weight} pts</span>
                     </div>
-                  )}
+                    <input type="number" value={data[id][field] || ''} onChange={e => updateVal(id, field, e.target.value)} className="text-xl font-black bg-transparent border-none outline-none w-full text-slate-800" placeholder="0" />
+                    <p className="text-[8px] text-slate-400 font-semibold uppercase mt-0.5">{period}</p>
                 </div>
-              </div>
-            </div>
-          )}
+            );
+            const periods = {
+                c1: [ {f:'prog', l:'Consultas Programadas', w:'Num', p:'Mês avaliado'}, {f:'total', l:'Total Atendimentos', w:'Den', p:'Total Mensal'} ],
+                c2: [ {f:'a', l:'1ª Consulta', w:20, p:'Até 30 dias de vida'}, {f:'b', l:'Mínimo 9 Consultas', w:20, p:'Até 2 anos de vida'}, {f:'c', l:'9 Antropometrias', w:20, p:'Até 2 anos de vida'}, {f:'d', l:'2 Visitas ACS', w:20, p:'1ª < 30d | 2ª < 6m de vida'}, {f:'e', l:'Vacinação Completa', w:20, p:'Penta, Pólio, Sarampo...'} ],
+                c3: [ {f:'a', l:'Captação PN', w:10, p:'Até 12ª sem gestação'}, {f:'b', l:'Mínimo 7 Consultas', w:9, p:'Durante a gestação'}, {f:'c', l:'7 Registos PA', w:9, p:'Durante a gestação'}, {f:'d', l:'7 Antropometrias', w:9, p:'Durante a gestação'}, {f:'e', l:'3 Visitas ACS', w:9, p:'Após a 1ª consulta'}, {f:'f', l:'Vacina dTpa', w:9, p:'A partir da 20ª semana'}, {f:'g', l:'Exames 1º Trim', w:9, p:'HIV, Sífilis, Hep B/C'}, {f:'h', l:'Exames 3º Trim', w:9, p:'HIV e Sífilis'}, {f:'i', l:'Cons. Puerperal', w:9, p:'Até 42 dias pós-parto'}, {f:'j', l:'Visita ACS Puerp.', w:9, p:'Até 42 dias pós-parto'}, {f:'k', l:'Saúde Bucal', w:9, p:'Durante a gestação'} ],
+                c4: [ {f:'a', l:'Consulta Méd/Enf', w:20, p:'Últimos 6 meses'}, {f:'b', l:'Aferição PA', w:15, p:'Últimos 6 meses'}, {f:'c', l:'Antropometria', w:15, p:'Últimos 12 meses'}, {f:'d', l:'2 Visitas ACS', w:20, p:'Últimos 12 meses'}, {f:'e', l:'Hb1Ac (Exame)', w:15, p:'Últimos 12 meses'}, {f:'f', l:'Exame dos Pés', w:15, p:'Últimos 12 meses'} ],
+                c5: [ {f:'a', l:'Consulta Méd/Enf', w:25, p:'Últimos 6 meses'}, {f:'b', l:'Aferição PA', w:25, p:'Últimos 6 meses'}, {f:'c', l:'Antropometria', w:25, p:'Últimos 12 meses'}, {f:'d', l:'2 Visitas ACS', w:25, p:'Últimos 12 meses'} ],
+                c6: [ {f:'a', l:'Consulta Méd/Enf', w:25, p:'Últimos 12 meses'}, {f:'b', l:'Antropometria', w:25, p:'Últimos 12 meses'}, {f:'c', l:'2 Visitas ACS', w:25, p:'Últimos 12 meses'}, {f:'d', l:'Vacina Influenza', w:25, p:'Últimos 12 meses'} ],
+                c7: [ {f:'a', l:'Citopatológico', w:20, p:'Últimos 36 meses (25-64a)'}, {f:'b', l:'Vacina HPV', w:30, p:'Dose única (9-14a)'}, {f:'c', l:'Saúde Sexual/Reprod.', w:30, p:'Últimos 12 meses'}, {f:'d', l:'Mamografia', w:20, p:'Últimos 24 meses (50-69a)'} ]
+            };
+            return (periods[id] || []).map(i => <Input key={i.f} field={i.f} label={i.l} weight={i.w} period={i.p} />);
+        }
 
-          {/* REFERÊNCIAS TÉCNICAS */}
-          {activeTab === 'refs' && (
-            <div className="max-w-4xl bg-white p-16 rounded-[60px] shadow-sm border border-slate-200 animate-in slide-in-from-bottom duration-700">
-              <h3 className="text-4xl font-black mb-12 flex items-center gap-5 text-slate-800 tracking-tighter">
-                <BookOpen size={48} className="text-indigo-600" /> Fundamentação Científica
-              </h3>
-              <div className="space-y-8 text-sm text-slate-600 font-medium italic leading-relaxed">
-                <div className="p-8 bg-slate-50 rounded-[32px] border-l-[10px] border-indigo-600 shadow-sm">
-                   <p>BRASIL. Ministério da Saúde. Secretaria de Atenção Primária à Saúde. Departamento de Estratégias e Políticas de Saúde Comunitária. <strong>Nota Metodológica C1 a C7: Indicadores de Desempenho Quadrimestral da Atenção Primária à Saúde (APS)</strong>. Brasília: Ministério da Saúde, 2024.</p>
-                </div>
-                <div className="p-8 bg-slate-50 rounded-[32px] border-l-[10px] border-indigo-600 shadow-sm">
-                   <p>CONSELHO FEDERAL DE ENFERMAGEM (COFEN). <strong>Resolução nº 358, de 15 de outubro de 2009</strong>: Dispõe sobre a Sistematização da Assistência de Enfermagem e a Implementação do Processo de Enfermagem. Brasília, 2009.</p>
-                </div>
-                <div className="pt-10 flex items-center gap-4 text-indigo-600 font-black text-xs uppercase tracking-widest not-italic">
-                  <ShieldCheck size={24} /> Criado para apoio à decisão clínica por Matheus Rodrigues da Cruz.
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// Funções de Renderização Auxiliar
-function renderSpecificInputs(id, data, updateVal) {
-  const Input = ({ field, label, weight }) => (
-    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col gap-1 transition-all hover:bg-white hover:shadow-md focus-within:ring-2 focus-within:ring-indigo-500">
-      <div className="flex justify-between items-start mb-1">
-        <label className="text-[10px] font-black text-slate-400 uppercase leading-none tracking-tighter">{label}</label>
-        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 rounded-full">{weight} pts</span>
-      </div>
-      <input 
-        type="number" 
-        value={data[id][field] || ''} 
-        onChange={e => updateVal(id, field, e.target.value)} 
-        className="text-2xl font-black bg-transparent border-none outline-none w-full text-slate-800" 
-        placeholder="0" 
-      />
-    </div>
-  );
-
-  switch(id) {
-    case 'c1': return ( <><Input field="prog" label="Consultas Programadas" weight="Num" /><Input field="total" label="Total Atendimentos" weight="Den" /></> );
-    case 'c2': return ( <><Input field="a" label="BP(A): 1ª Consulta (30d)" weight="20" /><Input field="b" label="BP(B): 9 Consultas (2a)" weight="20" /><Input field="c" label="BP(C): Antropometria (9x)" weight="20" /><Input field="d" label="BP(D): 2 Visitas ACS" weight="20" /><Input field="e" label="BP(E): Vacina Completa" weight="20" /></> );
-    case 'c3': return ( <><Input field="a" label="BP(A): Captação (12ª sem)" weight="10" /><Input field="b" label="BP(B): 7 Consultas PN" weight="9" /><Input field="c" label="BP(C): 7 Aferições PA" weight="9" /><Input field="d" label="BP(D): 7 Registos Peso" weight="9" /><Input field="e" label="BP(E): 3 Visitas ACS" weight="9" /><Input field="f" label="BP(F): Vacina dTpa" weight="9" /><Input field="g" label="BP(G): Exames 1ºT" weight="9" /><Input field="h" label="BP(H): Exames 3ºT" weight="9" /><Input field="i" label="BP(I): Cons. Puerperal" weight="9" /><Input field="j" label="BP(J): Visita ACS Puerp" weight="9" /><Input field="k" label="BP(K): Saúde Bucal" weight="9" /></> );
-    case 'c4': return ( <><Input field="a" label="BP(A): Consulta (6m)" weight="20" /><Input field="b" label="BP(B): PA (6m)" weight="15" /><Input field="c" label="BP(C): Peso/Alt (12m)" weight="15" /><Input field="d" label="BP(D): 2 Visitas ACS" weight="20" /><Input field="e" label="BP(E): Hb1Ac (12m)" weight="15" /><Input field="f" label="BP(F): Aval. Pés (12m)" weight="15" /></> );
-    case 'c5': return ( <><Input field="a" label="BP(A): Consulta (6m)" weight="25" /><Input field="b" label="BP(B): PA (6m)" weight="25" /><Input field="c" label="BP(C): Peso/Alt (12m)" weight="25" /><Input field="d" label="BP(D): 2 Visitas ACS" weight="25" /></> );
-    case 'c6': return ( <><Input field="a" label="BP(A): Consulta (12m)" weight="25" /><Input field="b" label="BP(B): Peso/Alt (12m)" weight="25" /><Input field="c" label="BP(C): 2 Visitas ACS" weight="25" /><Input field="d" label="BP(D): Vacina Influenza" weight="25" /></> );
-    case 'c7': return ( <><Input field="a" label="BP(A): Citopatológico" weight="20" /><Input field="b" label="BP(B): Vacina HPV" weight="30" /><Input field="c" label="BP(C): Saúde Sexual" weight="30" /><Input field="d" label="BP(D): Mamografia" weight="20" /></> );
-    default: return null;
-  }
-}
-
-const getLabel = (id) => {
-  const labels = { c1: "Mais Acesso", c2: "Desenv. Infantil", c3: "Pré-natal/Puerp.", c4: "Diabetes", c5: "Hipertensão", c6: "Pessoa Idosa", c7: "Prev. Câncer" };
-  return labels[id] || id.toUpperCase();
-};
-
-export default App;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
